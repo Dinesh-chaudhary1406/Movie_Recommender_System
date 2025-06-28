@@ -2,11 +2,13 @@ import streamlit as st
 import pickle
 import pandas as pd
 import requests
+import gdown
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 st.set_page_config(page_title="Movie Recommender", layout="wide")
 
-# 🌙 Dark background
+# 🌙 Custom dark theme
 st.markdown("""
     <style>
         body, .main {
@@ -31,10 +33,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Cached poster fetch
+# 📥 Download similarity.pkl if missing
+SIMILARITY_FILE = "similarity.pkl"
+DRIVE_FILE_ID = "1oPh4MyV9ERw0plQ0gDJFC4CteWu-y6ZW"
+if not os.path.exists(SIMILARITY_FILE):
+    url = f"https://drive.google.com/uc?id={DRIVE_FILE_ID}"
+    gdown.download(url, SIMILARITY_FILE, quiet=False)
+
+# 🎬 Fetch movie poster
 @st.cache_data(show_spinner=False)
 def fetch_poster(movie_id):
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=b7b186ba37f1643a5c177965ff227650&language=en-US"
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=8265bd1679663a7ea12ac168da84d2e8&language=en-US"
     try:
         res = requests.get(url, timeout=4)
         res.raise_for_status()
@@ -46,7 +55,7 @@ def fetch_poster(movie_id):
         return "https://via.placeholder.com/500x750?text=No+Poster"
     return "https://via.placeholder.com/500x750?text=No+Poster"
 
-# Recommend function with parallel poster fetch
+# 🔁 Recommendation logic
 def recommend(movie):
     movie_index = movies[movies['title'] == movie].index[0]
     distances = similarity[movie_index]
@@ -55,18 +64,17 @@ def recommend(movie):
     recommended_titles = [movies.iloc[i[0]]['title'] for i in top_movies]
     movie_ids = [movies.iloc[i[0]]['id'] for i in top_movies]
 
-    # Fetch posters in parallel
     with ThreadPoolExecutor() as executor:
         recommended_posters = list(executor.map(fetch_poster, movie_ids))
 
     return recommended_titles, recommended_posters
 
-# Load data
+# 📦 Load Data
 movies_dict = pickle.load(open('movies_dict.pkl', 'rb'))
 movies = pd.DataFrame(movies_dict)
-similarity = pickle.load(open('similarity.pkl', 'rb'))
+similarity = pickle.load(open(SIMILARITY_FILE, 'rb'))
 
-# UI
+# 🔍 UI
 st.markdown("<h1>🎬 Movie Recommender</h1>", unsafe_allow_html=True)
 selected_movie = st.selectbox("Choose a movie you like:", movies['title'].values)
 

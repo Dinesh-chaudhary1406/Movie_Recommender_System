@@ -1,1 +1,9 @@
-venv
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore virtual env
+.venv/
+
+# Ignore data files
+similarity.pkl
